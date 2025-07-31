@@ -7,7 +7,8 @@ Okay, here are the Entity Relationship Diagram and Data Dictionary sections from
 ## ENTITY RELATIONSHIP MODEL
 
 The project report includes an Entity Relationship Model diagram. This diagram visually represents the database entities, their attributes, and the relationships between them.
-![alt text](resources/image.png)
+
+<img src="resources/image.png" alt="alt text" style="transform: rotate(270deg);" width="100%">
 
 ## DATA DICTIONARY
 
@@ -44,11 +45,11 @@ Records employee information.
 
 Manages user credentials.
 
-| Attribute Name | Description                        | Datatype     | Domain         | Nullable | PK  | FK  |
-| :------------- | :--------------------------------- | :----------- | :------------- | :------- | :-- | :-- |
-| employee       | employeeId from the employee table | Char (5)     | Alphanumeric   | No       | Yes | Yes |
-| userName       | Login username                     | Varchar2(25) | All and Unique | No       | No  | No  |
-| hashedPassword | Password in hashed format          | Char (256)   | All            | No       | No  | No  |
+| Attribute Name | Description                        | Datatype       | Domain         | Nullable | PK  | FK  |
+| :------------- | :--------------------------------- | :------------- | :------------- | :------- | :-- | :-- |
+| employee       | employeeId from the employee table | Char (5)       | Alphanumeric   | No       | Yes | Yes |
+| userName       | Login username                     | Varchar2(25)   | All and Unique | No       | No  | No  |
+| hashedPassword | Password in hashed format          | Varchar2 (256) | All            | No       | No  | No  |
 
 ### Role
 
