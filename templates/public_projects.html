@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ongoing Projects</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 text-gray-800">
+    <header class="bg-white shadow-sm">
+      <div
+        class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center"
+      >
+        <h1 class="text-2xl font-bold text-gray-900">Ongoing Projects</h1>
+        <nav>
+          <a
+            href="{{ url_for('public_dashboard') }}"
+            class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+            >Home</a
+          >
+          <a
+            href="{{ url_for('public_contractors') }}"
+            class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+            >Contractors</a
+          >
+          <a
+            href="{{ url_for('login') }}"
+            class="text-blue-600 hover:text-blue-800 px-3 py-2 rounded-md text-sm font-medium"
+            >Login</a
+          >
+        </nav>
+      </div>
+    </header>
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <div id="projects-list" class="space-y-4">
+        <p class="text-gray-500">Loading projects...</p>
+      </div>
+    </main>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        fetch("/api/public/projects")
+          .then((response) => response.json())
+          .then((data) => {
+            const list = document.getElementById("projects-list");
+            list.innerHTML = "";
+            if (!data || data.length === 0) {
+              list.innerHTML =
+                '<p class="text-gray-500">No projects found.</p>';
+              return;
+            }
+            data.forEach((p) => {
+              const el = document.createElement("div");
+              el.className = "bg-white p-4 rounded-xl shadow-md";
+              el.innerHTML = `
+                            <h3 class="font-semibold text-lg text-gray-800">${
+                              p.NAME
+                            }</h3>
+                            <p class="text-sm text-gray-600">${p.DISTRICT}, ${
+                p.PROVINCE
+              }</p>
+                            <p class="text-xs text-gray-500 mt-2">Start Date: ${new Date(
+                              p.STARTDATE
+                            ).toLocaleDateString()}</p>
+                        `;
+              list.appendChild(el);
+            });
+          })
+          .catch((e) => {
+            console.error("Error fetching projects:", e);
+            document.getElementById("projects-list").innerHTML =
+              '<p class="text-red-500">Could not load projects.</p>';
+          });
+      });
+    </script>
+  </body>
+</html>

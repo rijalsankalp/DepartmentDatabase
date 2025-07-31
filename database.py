@@ -16,8 +16,7 @@ def get_user_for_login(username):
     
     cursor = conn.cursor()
     query = """
-            SELECT * 
-            FROM Login
+            SELECT * FROM Login
             WHERE LOWER(userName) = LOWER(:username) 
         """
     
@@ -136,20 +135,15 @@ def add_employee_and_create_login(emp_data):
     if not conn: return {"success": False, "message": "Database connection failed."}
     cursor = conn.cursor()
 
-    # --- Step 1: Validate Foreign Keys ---
-    # Before starting the transaction, check if the provided role and division exist.
     try:
-        # Check if Role ID is valid
         cursor.execute("SELECT COUNT(*) FROM Role WHERE roleId = :role_id", role_id=emp_data['role'])
         if cursor.fetchone()[0] == 0:
             return {"success": False, "message": f"Invalid Role ID: {emp_data['role']} does not exist."}
 
-        # Check if Division ID is valid
         cursor.execute("SELECT COUNT(*) FROM Division WHERE divisionId = :div_id", div_id=emp_data['division'])
         if cursor.fetchone()[0] == 0:
             return {"success": False, "message": f"Invalid Division ID: {emp_data['division']} does not exist."}
             
-        # Check if Manager ID is valid (if provided)
         if emp_data.get('manager'):
             cursor.execute("SELECT COUNT(*) FROM Employee WHERE employeeId = :mgr_id", mgr_id=emp_data['manager'])
             if cursor.fetchone()[0] == 0:
@@ -157,10 +151,7 @@ def add_employee_and_create_login(emp_data):
 
     except oracledb.Error as e:
         return {"success": False, "message": f"Validation Error: {str(e).splitlines()[0]}"}
-    # Do not close the connection here, we need it for the transaction.
 
-    # --- Step 2: Proceed with Transaction ---
-    # Use the employee's email as the default username and password
     username = emp_data['email']
     default_password = emp_data['email'].encode('utf-8')
     hashed_password = bcrypt.hashpw(default_password, bcrypt.gensalt()).decode('utf-8')
@@ -168,7 +159,6 @@ def add_employee_and_create_login(emp_data):
     print(f"Creating employee and login for '{username}' with pasword: {default_password}, and hashed password: {hashed_password}")
 
     try:
-        # 1. Insert into Employee table
         employee_query = """
             INSERT INTO Employee (employeeId, firstName, lastName, email, phone, division, role, manager, status)
             VALUES (:employeeId, :firstName, :lastName, :email, :phone, :division, :role, :manager, 'active')
@@ -184,7 +174,6 @@ def add_employee_and_create_login(emp_data):
             'manager': emp_data.get('manager', None)
         })
 
-        # 2. Insert into Login table
         login_query = """
             INSERT INTO Login (employee, userName, hashedPassword)
             VALUES (:employee, :userName, :hashedPassword)
@@ -195,11 +184,11 @@ def add_employee_and_create_login(emp_data):
             'hashedPassword': hashed_password
         })
 
-        conn.commit() # Commit both INSERT statements at once.
+        conn.commit()
         return {"success": True, "message": f"Employee and login for '{username}' created successfully."}
 
     except oracledb.Error as e:
-        conn.rollback() # If anything fails, undo all changes from this transaction.
+        conn.rollback()
         error_message = str(e).split("\n")[0]
         if "ORA-00001" in error_message:
             return {"success": False, "message": "Employee ID, Email, or Username already exists."}
@@ -222,8 +211,6 @@ def update_employee_status(employee_id, status):
     """ Updates an employee's status (e.g., 'left', 'terminated'). """
     query = "UPDATE Employee SET status = :status WHERE employeeId = :id"
     return _execute_query(query, {"status": status, "id": employee_id}, fetch="none")
-
-# --- PROJECT MANAGEMENT ---
 
 def get_all_projects():
     """ Fetches all projects with basic details. """
@@ -275,8 +262,6 @@ def get_project_assignments(project_id):
     """
     return _execute_query(query, {"id": project_id})
 
-# --- CONTRACTOR & LICENSE MANAGEMENT ---
-
 def get_all_contractors():
     """ Fetches all contractors. """
     query = "SELECT * FROM Contractor ORDER BY name"
@@ -308,29 +293,33 @@ def add_new_license(license_data):
     """
     return _execute_query(query, license_data, fetch="none")
 
-# --- DASHBOARD & AGGREGATES ---
-
 def get_dashboard_stats():
     """ Fetches high-level statistics for the main dashboard. """
     stats = {}
     
-    # Active Employees
     q1 = "SELECT COUNT(*) AS count FROM Employee WHERE status = 'active'"
     stats['active_employees'] = _execute_query(q1, fetch="one")['count']
     
-    # Ongoing Projects
     q2 = "SELECT COUNT(*) AS count FROM Project WHERE endDate IS NULL OR endDate > SYSDATE"
     stats['ongoing_projects'] = _execute_query(q2, fetch="one")['count']
     
-    # Total Budget
     q3 = "SELECT SUM(amountAllocated) AS total FROM Budget"
     stats['total_budget'] = _execute_query(q3, fetch="one")['total']
     
     return stats
 
+def get_all_projects_public():
+    """ Fetches all projects with limited details for public viewing. """
+    query = "SELECT name, district, province, startDate FROM Project WHERE endDate IS NULL OR endDate > SYSDATE ORDER BY startDate DESC"
+    return _execute_query(query)
+
+def get_all_contractors_public():
+    """ Fetches all active contractors with limited details for public viewing. """
+    query = "SELECT name, district, province FROM Contractor WHERE status = 'active' ORDER BY name"
+    return _execute_query(query)
+
 
 if __name__ == "__main__":
-    # Test the database connection
     conn = oracle_connect()
     if conn:
         print("Connection successful!")
@@ -338,21 +327,16 @@ if __name__ == "__main__":
     else:
         print("Connection failed.")
 
-    # Create admin user
     admin_data = {
         'employeeId': 1,
         'firstName': 'Admin',
         'lastName': 'User',
         'email': 'admin',
         'phone': '1234567890',
-        'division': 'A001',  # Assuming division ID 1 exists
-        'role': 'R001',      # Assuming role ID 1 exists
-        'manager': None # Admin has no manager
+        'division': 'A001',
+        'role': 'R001',
+        'manager': None
     }
     
     result = add_employee_and_create_login(admin_data)
     print(result)
-    
-
-    
- 
