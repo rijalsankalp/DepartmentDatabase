@@ -31,7 +31,7 @@ def login():
 def logout():
     """Clears the user session to log them out."""
     session.clear()
-    return redirect(url_for('public_dashboard'))
+    return redirect(url_for('login'))
 
 
 
@@ -63,6 +63,11 @@ def public_dashboard():
 def public_projects():
     """Renders the public projects page."""
     return render_template('public_projects.html')
+
+@app.route('/public/project/<string:project_id>')
+def public_project_detail(project_id):
+    """Renders the public project detail page."""
+    return render_template('public_project_detail.html')
 
 @app.route('/public/contractors')
 def public_contractors():
@@ -112,6 +117,14 @@ def api_public_projects():
     projects = database.get_all_projects_public()
     return jsonify(projects)
 
+@app.route('/api/public/project/<string:project_id>', methods=['GET'])
+def api_public_project_detail(project_id):
+    """API for getting details for a single public project."""
+    details = database.get_project_details_public(project_id)
+    if details:
+        return jsonify({"success": True, **details})
+    return jsonify({"success": False, "message": "Project not found"}), 404
+
 @app.route('/api/public/contractors', methods=['GET'])
 def api_public_contractors():
     """API for getting all contractors for the public."""
@@ -121,4 +134,4 @@ def api_public_contractors():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=4590)
+    app.run(debug=True, port = 4590)

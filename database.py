@@ -83,15 +83,16 @@ def _execute_query(query, params = None, fetch = "all"):
         
         elif fetch == "one":
             columns = [col[0].lower() for col in cursor.description]
-            return dict(zip(columns, cursor.fetchone()))
+            row = cursor.fetchone()
+            return dict(zip(columns, row)) if row else None
         
         elif fetch == "none":
             conn.commit()
             return {"success": True}
-    except:
+    except oracledb.Error as e:
         conn.rollback()
-        print("Error executing query")
-        return {"success": False, "message": "str(e).split('\n')[0]"}
+        print(f"Error executing query: {e}")
+        return {"success": False, "message": str(e).split('\n')[0]}
     finally:
         cursor.close()
         conn.close()        
@@ -103,9 +104,9 @@ def get_all_employees():
     query = """
         SELECT e.employeeId, e.firstName, e.lastName, e.email, e.phone, e.Status, r.title AS roleTitle, d.name AS divisionName, m.firstName ||' '|| m.lastName AS managerName
         FROM Employee e
-        JOIN Role r ON e.roleId = r.roleId
-        JOIN Division d ON e.divisionId = d.divisionId
-        LEFT JOIN Employee m ON e.managerId = m.empluyeeId
+        JOIN Role r ON e.role = r.roleId
+        JOIN Division d ON e.division = d.divisionId
+        LEFT JOIN Employee m ON e.manager = m.employeeId
         ORDER BY e.firstName, e.lastName
         """
     return _execute_query(query)
@@ -118,10 +119,10 @@ def get_employee_by_Id(employee_id):
     query = """
         SELECT e.employeeId, e.firstName, e.lastName, e.email, e.phone, e.Status, r.title AS roleTitle, d.name AS divisionName, m.firstName ||' '|| m.lastName AS managerName
         FROM Employee e
-        JOIN Role r ON e.roleId = r.roleId
-        JOIN Division d ON e.divisionId = d.divisionId
-        LEFT JOIN Employee m ON e.managerId = m.empluyeeId
-        WHERE e.iemployeeId = :employee_id
+        JOIN Role r ON e.role = r.roleId
+        JOIN Division d ON e.division = d.divisionId
+        LEFT JOIN Employee m ON e.manager = m.employeeId
+        WHERE e.employeeId = :employee_id
         """
     return _execute_query(query, {"employee_id": employee_id}, fetch="one")
 
@@ -214,7 +215,7 @@ def update_employee_status(employee_id, status):
 
 def get_all_projects():
     """ Fetches all projects with basic details. """
-    query = "SELECT * FROM Project ORDER BY startDate DESC"
+    query = "SELECT projectId, name, startDate, endDate FROM Project ORDER BY startDate DESC"
     return _execute_query(query)
 
 def get_projects_with_budget():
@@ -310,13 +311,34 @@ def get_dashboard_stats():
 
 def get_all_projects_public():
     """ Fetches all projects with limited details for public viewing. """
-    query = "SELECT name, district, province, startDate FROM Project WHERE endDate IS NULL OR endDate > SYSDATE ORDER BY startDate DESC"
+    query = "SELECT projectId, name, district, province, startDate FROM Project WHERE endDate IS NULL OR endDate > SYSDATE ORDER BY startDate DESC"
     return _execute_query(query)
 
 def get_all_contractors_public():
     """ Fetches all active contractors with limited details for public viewing. """
     query = "SELECT name, district, province FROM Contractor WHERE status = 'active' ORDER BY name"
     return _execute_query(query)
+
+def get_project_details_public(project_id):
+    """ Fetches public details for a single project and its associated contractors. """
+    project_query = "SELECT name, street, district, province, startDate, endDate FROM Project WHERE projectId = :id"
+    project_details = _execute_query(project_query, {"id": project_id}, fetch="one")
+
+    if not project_details:
+        return None
+
+    contractor_query = """
+        SELECT c.name
+        FROM Contractor c
+        JOIN License l ON c.contractorId = l.contractorId
+        JOIN Assignment a ON l.licenseNum = a.license
+        WHERE a.project = :id AND c.status = 'active'
+        GROUP BY c.name
+        ORDER BY c.name
+    """
+    contractors = _execute_query(contractor_query, {"id": project_id})
+
+    return {"project": project_details, "contractors": contractors}
 
 
 if __name__ == "__main__":
@@ -326,17 +348,3 @@ if __name__ == "__main__":
         conn.close()
     else:
         print("Connection failed.")
-
-    admin_data = {
-        'employeeId': 1,
-        'firstName': 'Admin',
-        'lastName': 'User',
-        'email': 'admin',
-        'phone': '1234567890',
-        'division': 'A001',
-        'role': 'R001',
-        'manager': None
-    }
-    
-    result = add_employee_and_create_login(admin_data)
-    print(result)
